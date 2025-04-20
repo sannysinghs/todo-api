@@ -1,12 +1,23 @@
 const express = require('express');
 const router = express.Router();
 const Todo = require('../models/Todo');
+const Changelog = require('../models/Changelog');
 
 // Get all todos
 router.get('/', async (req, res) => {
   try {
-    const todos = await Todo.find().sort({ createdAt: -1 });
+    const ids = req.params.ids || []
+    const todos = await Todo.find(ids.length ? { _id: { $in: ids } } : {}).sort({ createdAt: -1})
     res.json(todos);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/changelist/', async (req, res) => {
+  try {
+    const lastSyncedVersion = req.query.lastSyncedVersion || 0
+    res.json(await Changelog.find({ version: {$gt: lastSyncedVersion} }))
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -34,7 +45,10 @@ router.post('/', async (req, res) => {
 
     const todosData = Array.isArray(req.body) ? req.body : [req.body];
     const savedTodos = [];
-
+    
+    const lastChangelog = await Changelog.findOne().sort({version: -1});
+    let lastSyncedVersion = lastChangelog ? lastChangelog.version : 0
+    
     for (const data of todosData) {
       const todo = new Todo({
         title: data.title,
@@ -48,6 +62,16 @@ router.post('/', async (req, res) => {
       });
 
       const savedTodo = await todo.save();
+      // increment changelog version 
+      lastSyncedVersion++ 
+      // create changelog record
+      const log = new Changelog({
+        resourceId: savedTodo._id,
+        version : lastSyncedVersion,
+        isDeleted: false,
+      })
+
+      await log.save()
       savedTodos.push(savedTodo);
     }
 
