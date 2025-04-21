@@ -3,11 +3,31 @@ const router = express.Router();
 const Todo = require('../models/Todo');
 const Changelog = require('../models/Changelog');
 
+// Helper function to add changelog entry for todo changes
+const addChangelog = async (resource, isDeleted = false) => {
+  try {
+
+    const lastRecord = await Changelog.findOne().sort({ version: -1 })
+    const curVersion = lastRecord?.version ?? -1
+
+    const changelog = new Changelog({
+      resourceId: resource._id,
+      isDeleted: isDeleted,
+      resourceType: "todo",
+      version: curVersion + 1
+    });
+
+    return await changelog.save();
+  } catch (error) {
+    throw new Error(`Failed to add changelog: ${error.message}`);
+  }
+};
+
 // Get all todos
 router.get('/', async (req, res) => {
   try {
-    const ids = req.params.ids || []
-    const todos = await Todo.find(ids.length ? { _id: { $in: ids } } : {}).sort({ createdAt: -1})
+    const ids = req.query.id ? Array.isArray(req.query.id) ? req.query.id : [req.query.id] : []
+    const todos = await Todo.find(ids.length ? { _id: { $in: ids } } : {}).sort({ createdAt: -1 })
     res.json(todos);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -17,7 +37,7 @@ router.get('/', async (req, res) => {
 router.get('/changelist/', async (req, res) => {
   try {
     const lastSyncedVersion = req.query.lastSyncedVersion || 0
-    res.json(await Changelog.find({ version: {$gt: lastSyncedVersion} }))
+    res.json(await Changelog.find({ version: { $gt: lastSyncedVersion } }))
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -45,10 +65,7 @@ router.post('/', async (req, res) => {
 
     const todosData = Array.isArray(req.body) ? req.body : [req.body];
     const savedTodos = [];
-    
-    const lastChangelog = await Changelog.findOne().sort({version: -1});
-    let lastSyncedVersion = lastChangelog ? lastChangelog.version : 0
-    
+
     for (const data of todosData) {
       const todo = new Todo({
         title: data.title,
@@ -63,20 +80,12 @@ router.post('/', async (req, res) => {
 
       const savedTodo = await todo.save();
       // increment changelog version 
-      lastSyncedVersion++ 
-      // create changelog record
-      const log = new Changelog({
-        resourceId: savedTodo._id,
-        version : lastSyncedVersion,
-        isDeleted: false,
-      })
-
-      await log.save()
+      await addChangelog(savedTodo)
       savedTodos.push(savedTodo);
     }
 
     return res.status(201).json(savedTodos);
-    
+
   } catch (error) {
     console.error('Error details:', error);
     return res.status(400).json({ message: error.message });
@@ -94,14 +103,18 @@ router.patch('/:id', async (req, res) => {
     if (req.body.title) {
       todo.title = req.body.title;
     }
+
     if (req.body.description) {
       todo.description = req.body.description;
     }
+
     if (req.body.completed !== undefined) {
       todo.completed = req.body.completed;
     }
 
     const updatedTodo = await todo.save();
+    await addChangelog(updatedTodo);
+
     res.json(updatedTodo);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -116,6 +129,8 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Todo not found' });
     }
     await todo.deleteOne();
+
+    await addChangelog(todo, true)
     res.json({ message: 'Todo deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
