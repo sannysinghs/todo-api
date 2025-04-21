@@ -9,10 +9,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/todo-api')
-  .then(() => console.log('Connected to MongoDB'))
-  .catch((err) => console.error('MongoDB connection error:', err));
+// Only connect to MongoDB if not in test environment
+if (process.env.NODE_ENV !== 'test') {
+  // MongoDB Connection
+  mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/todo-api')
+    .then(() => console.log('Connected to MongoDB'))
+    .catch((err) => console.error('MongoDB connection error:', err));
+}
 
 // Routes
 const todoRoutes = require('./routes/todos');
