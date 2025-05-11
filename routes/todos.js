@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Todo = require('../models/Todo');
 const Changelog = require('../models/Changelog');
+const mongoose = require('mongoose');
 
 // Helper function to add changelog entry for todo changes
 const addChangelog = async (resource, isDeleted = false) => {
@@ -68,6 +69,7 @@ router.post('/', async (req, res) => {
 
     for (const data of todosData) {
       const todo = new Todo({
+        local_id: data.local_id,
         title: data.title,
         description: data.description,
         completed: data.completed || false,
@@ -75,7 +77,7 @@ router.post('/', async (req, res) => {
         tags: data.tags || [],
         due_date: data.due_date,
         dependencies: data.dependencies || [],
-        image: data.image
+        image: data.image, 
       });
 
       const savedTodo = await todo.save();

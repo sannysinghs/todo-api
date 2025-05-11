@@ -39,6 +39,10 @@ const todoSchema = new mongoose.Schema({
     type: String,
     required: false
   },
+  local_id: {
+    type: String,
+    required: true
+  }
 });
 
 module.exports = mongoose.model('Todo', todoSchema); 
