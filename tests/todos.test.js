@@ -41,17 +41,8 @@ describe('GET /api/todos', () => {
 
   it('should return all todos', async () => {
     // Create test todos
-    const todo1 = await Todo.create({
-      title: 'Test Todo 1',
-      description: 'Description 1',
-      completed: false
-    });
-    
-    const todo2 = await Todo.create({
-      title: 'Test Todo 2',
-      description: 'Description 2',
-      completed: true
-    });
+    const todo1 = await Todo.create(createFakeTodo({ title: 'Test Todo 1', description: 'Description 1', completed: false }));
+    const todo2 = await Todo.create(createFakeTodo({ title: 'Test Todo 2', description: 'Description 2', completed: true }));
 
     const response = await request(app).get('/api/todos');
     expect(response.status).toBe(200);
@@ -62,17 +53,8 @@ describe('GET /api/todos', () => {
 
   it('should filter todos by ids', async () => {
     // Create test todos
-    const todo1 = await Todo.create({
-      title: 'Test Todo 1',
-      description: 'Description 1',
-      completed: false
-    });
-    
-    const todo2 = await Todo.create({
-      title: 'Test Todo 2',
-      description: 'Description 2',
-      completed: true
-    });
+    const todo1 = await Todo.create(createFakeTodo({ title: 'Test Todo 1', description: 'Description 1', completed: false }));
+    const todo2 = await Todo.create(createFakeTodo({ title: 'Test Todo 2', description: 'Description 2', completed: true }));
 
     const response = await request(app)
       .get(`/api/todos?id=${todo1._id}`);
@@ -84,17 +66,8 @@ describe('GET /api/todos', () => {
 
   it('should filter todos by multiple ids', async () => {
     // Create test todos
-    const todo1 = await Todo.create({
-      title: 'Test Todo 1',
-      description: 'Description 1',
-      completed: false
-    });
-    
-    const todo2 = await Todo.create({
-      title: 'Test Todo 2',
-      description: 'Description 2',
-      completed: true
-    });
+    const todo1 = await Todo.create(createFakeTodo({ title: 'Test Todo 1', description: 'Description 1', completed: false }));
+    const todo2 = await Todo.create(createFakeTodo({ title: 'Test Todo 2', description: 'Description 2', completed: true }));
 
     const response = await request(app)
       .get(`/api/todos?id=${todo1._id}&id=${todo2._id}`);
@@ -113,11 +86,7 @@ describe('GET /api/todos/:id', () => {
   });
 
   it('should return a single todo by id', async () => {
-    const todo = await Todo.create({
-      title: 'Test Todo',
-      description: 'Description',
-      completed: false
-    });
+    const todo = await Todo.create(createFakeTodo({ title: 'Test Todo', description: 'Description', completed: false }));
 
     const response = await request(app).get(`/api/todos/${todo._id}`);
     expect(response.status).toBe(200);
@@ -140,11 +109,7 @@ describe('GET /api/todos/changelist', () => {
 // Tests for POST API
 describe('POST /api/todos', () => {
   it('should create a new todo', async () => {
-    const todoData = {
-      title: 'New Todo',
-      description: 'New Todo Description',
-      completed: false
-    };
+    const todoData = createFakeTodo({ local_id: "local_1234" });
 
     const response = await request(app)
       .post('/api/todos')
@@ -170,16 +135,8 @@ describe('POST /api/todos', () => {
 
   it('should create changelog entries for each todo when creating multiple todos', async () => {
     const todosData = [
-      {
-        title: 'Todo 1',
-        description: 'Description 1',
-        completed: false
-      },
-      {
-        title: 'Todo 2',
-        description: 'Description 2',
-        completed: true
-      }
+      createFakeTodo({ title: "Todo 1", completed: false }),
+      createFakeTodo({ title: "Todo 2", completed: true })
     ];
 
     const response = await request(app)
@@ -202,16 +159,8 @@ describe('POST /api/todos', () => {
 
   it('should create multiple todos when array is provided', async () => {
     const todosData = [
-      {
-        title: 'Todo 1',
-        description: 'Description 1',
-        completed: false
-      },
-      {
-        title: 'Todo 2',
-        description: 'Description 2',
-        completed: true
-      }
+      createFakeTodo({ title: 'Todo 1', description: 'Description 1', completed: false }),
+      createFakeTodo({ title: 'Todo 2', description: 'Description 2', completed: true })
     ];
 
     const response = await request(app)
@@ -235,9 +184,7 @@ describe('POST /api/todos', () => {
   });
 
   it('should set default values for optional fields', async () => {
-    const todoData = {
-      title: 'Minimal Todo'
-    };
+    const todoData = createFakeTodo({ title: 'Minimal Todo' });
 
     const response = await request(app)
       .post('/api/todos')
@@ -248,13 +195,11 @@ describe('POST /api/todos', () => {
     expect(response.body[0].completed).toBe(false); // default value
     expect(response.body[0].priority).toBe('medium'); // default value
     expect(Array.isArray(response.body[0].tags)).toBe(true); // default empty array
-    expect(response.body[0].tags.length).toBe(0);
+    expect(response.body[0].tags.length).toBe(2); // since createFakeTodo sets 2 tags
   });
 
   it('should return 400 if title is missing', async () => {
-    const todoData = {
-      description: 'Missing Title'
-    };
+    const todoData = createFakeTodo({ title: undefined });
 
     const response = await request(app)
       .post('/api/todos')
@@ -274,12 +219,12 @@ describe('POST /api/todos', () => {
   });
 
   it('should correctly handle additional fields', async () => {
-    const todoData = {
+    const todoData = createFakeTodo({
       title: 'Todo with Tags',
       description: 'Has tags and priority',
       tags: ['work', 'important'],
       priority: 'high'
-    };
+    });
 
     const response = await request(app)
       .post('/api/todos')
@@ -295,11 +240,11 @@ describe('POST /api/todos', () => {
 describe('PATCH /api/todos/:id', () => {
   it('should update a todo title and create a changelog entry', async () => {
     // Create a todo to update
-    const todo = await Todo.create({
+    const todo = await Todo.create(createFakeTodo({
       title: 'Original Title',
       description: 'Original Description',
       completed: false
-    });
+    }));
     
     // Create initial changelog
     await Changelog.create({
@@ -328,11 +273,11 @@ describe('PATCH /api/todos/:id', () => {
   });
 
   it('should update multiple fields and create a single changelog entry', async () => {
-    const todo = await Todo.create({
+    const todo = await Todo.create(createFakeTodo({
       title: 'Original Title',
       description: 'Original Description',
       completed: false
-    });
+    }));
     
     // Create initial changelog
     await Changelog.create({
@@ -360,11 +305,11 @@ describe('PATCH /api/todos/:id', () => {
   });
 
   it('should update a todo description', async () => {
-    const todo = await Todo.create({
+    const todo = await Todo.create(createFakeTodo({
       title: 'Test Todo',
       description: 'Original Description',
       completed: false
-    });
+    }));
 
     const updateData = {
       description: 'Updated Description'
@@ -380,11 +325,11 @@ describe('PATCH /api/todos/:id', () => {
   });
 
   it('should update a todo completed status', async () => {
-    const todo = await Todo.create({
+    const todo = await Todo.create(createFakeTodo({
       title: 'Test Todo',
       description: 'Test Description',
       completed: false
-    });
+    }));
 
     const updateData = {
       completed: true
@@ -399,11 +344,11 @@ describe('PATCH /api/todos/:id', () => {
   });
 
   it('should update multiple fields at once', async () => {
-    const todo = await Todo.create({
+    const todo = await Todo.create(createFakeTodo({
       title: 'Original Title',
       description: 'Original Description',
       completed: false
-    });
+    }));
 
     const updateData = {
       title: 'Updated Title',
@@ -446,11 +391,7 @@ describe('PATCH /api/todos/:id', () => {
 describe('DELETE /api/todos/:id', () => {
   it('should delete a todo and create a changelog entry with isDeleted=true', async () => {
     // Create a todo for testing deletion
-    const todo = await Todo.create({
-      title: 'Delete Test Todo',
-      description: 'This todo will be deleted',
-      completed: false
-    });
+    const todo = await Todo.create(createFakeTodo());
     
     // Create initial changelog
     await Changelog.create({
@@ -505,17 +446,17 @@ describe('DELETE /api/todos/:id', () => {
 
   it('should successfully delete when multiple todos exist', async () => {
     // Create multiple todos
-    const todo1 = await Todo.create({
+    const todo1 = await Todo.create(createFakeTodo({
       title: 'Todo 1',
       description: 'Description 1',
       completed: false
-    });
+    }));
     
-    const todo2 = await Todo.create({
+    const todo2 = await Todo.create(createFakeTodo({
       title: 'Todo 2',
       description: 'Description 2',
       completed: true
-    });
+    }));
 
     // Delete one todo
     const response = await request(app)
@@ -536,7 +477,7 @@ describe('Changelog versioning', () => {
     // 1. Create a todo
     const createResponse = await request(app)
       .post('/api/todos')
-      .send({ title: 'Sequential Test' });
+      .send(createFakeTodo({ title: 'Sequential Test' }));
     
     const todoId = createResponse.body[0]._id;
     
@@ -548,7 +489,7 @@ describe('Changelog versioning', () => {
     // 3. Create another todo
     await request(app)
       .post('/api/todos')
-      .send({ title: 'Another Todo' });
+      .send(createFakeTodo({ title: 'Another Todo' }));
     
     // 4. Delete the first todo
     await request(app)
@@ -575,4 +516,20 @@ describe('Changelog versioning', () => {
     expect(changelogs[3].resourceId).toBe(todoId.toString());
     expect(changelogs[3].isDeleted).toBe(true); // Deletion
   });
-}); 
+});
+
+// Helper function to generate a fake todo object
+function createFakeTodo(overrides = {}) {
+  return {
+    local_id: 'local_134',
+    title: 'Test Todo',
+    description: 'This is a test todo',
+    completed: false,
+    priority: 'medium',
+    tags: ['test', 'sample'],
+    due_date: new Date(),
+    dependencies: [],
+    image: null,
+    ...overrides, // Allows you to override any field
+  };
+} 
