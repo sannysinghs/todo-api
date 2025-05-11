@@ -68,6 +68,7 @@ router.post('/', async (req, res) => {
 
     for (const data of todosData) {
       const todo = new Todo({
+        local_id: data.local_id,
         title: data.title,
         description: data.description,
         completed: data.completed || false,
